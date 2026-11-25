@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initContConfirmModal();
   initSealConfirmModal();
   initImageInputs();
+  initLiveCameraModal();
   initLightboxModal();
   initExcelHandlers();
   initUnifiedCheckHandlers();
@@ -472,12 +473,15 @@ function initContConfirmModal() {
   if (btnRetakeCam) {
     btnRetakeCam.addEventListener('click', () => {
       closeContConfirmModal();
+      openLiveCamera('cont');
     });
   }
 
   if (btnRetakeGal) {
     btnRetakeGal.addEventListener('click', () => {
       closeContConfirmModal();
+      const inputGal = document.getElementById('inputGalCont');
+      if (inputGal) inputGal.click();
     });
   }
 
@@ -671,12 +675,15 @@ function initSealConfirmModal() {
   if (btnRetakeCam) {
     btnRetakeCam.addEventListener('click', () => {
       closeSealConfirmModal();
+      openLiveCamera('seal');
     });
   }
 
   if (btnRetakeGal) {
     btnRetakeGal.addEventListener('click', () => {
       closeSealConfirmModal();
+      const inputGal = document.getElementById('inputGalSeal');
+      if (inputGal) inputGal.click();
     });
   }
 
@@ -849,6 +856,186 @@ function handleConfirmManualSeal() {
 }
 
 // ============================================================================
+// Live In-App Camera Viewfinder (Mở trực tiếp ống kính Camera trên điện thoại)
+// ============================================================================
+let liveCameraStream = null;
+let currentCameraType = 'cont'; // 'cont' | 'seal'
+let currentFacingMode = 'environment';
+let isTorchOn = false;
+
+function initLiveCameraModal() {
+  const btnClose = document.getElementById('btnLiveCloseCam');
+  const btnShutter = document.getElementById('btnLiveShutter');
+  const btnSwitch = document.getElementById('btnLiveSwitchCam');
+  const btnTorch = document.getElementById('btnLiveTorch');
+  const btnGallery = document.getElementById('btnLivePickGallery');
+  const btnNative = document.getElementById('btnLiveFallbackNative');
+
+  if (btnClose) btnClose.addEventListener('click', closeLiveCamera);
+  if (btnShutter) btnShutter.addEventListener('click', captureFromLiveCamera);
+  if (btnSwitch) {
+    btnSwitch.addEventListener('click', async () => {
+      currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+      await startCameraStream();
+    });
+  }
+  if (btnTorch) {
+    btnTorch.addEventListener('click', async () => {
+      if (!liveCameraStream) return;
+      const track = liveCameraStream.getVideoTracks()[0];
+      if (!track) return;
+      isTorchOn = !isTorchOn;
+      try {
+        await track.applyConstraints({
+          advanced: [{ torch: isTorchOn }]
+        });
+        btnTorch.style.background = isTorchOn ? 'rgba(234,179,8,0.5)' : 'rgba(255,255,255,0.22)';
+      } catch (e) {
+        console.warn('Torch constraint error:', e);
+      }
+    });
+  }
+  if (btnGallery) {
+    btnGallery.addEventListener('click', () => {
+      const type = currentCameraType;
+      closeLiveCamera();
+      const galInput = document.getElementById(type === 'cont' ? 'inputGalCont' : 'inputGalSeal');
+      if (galInput) galInput.click();
+    });
+  }
+  if (btnNative) {
+    btnNative.addEventListener('click', () => {
+      const type = currentCameraType;
+      closeLiveCamera();
+      const camInput = document.getElementById(type === 'cont' ? 'inputCamCont' : 'inputCamSeal');
+      if (camInput) camInput.click();
+    });
+  }
+}
+
+async function startCameraStream() {
+  const video = document.getElementById('liveCameraVideo');
+  const btnTorch = document.getElementById('btnLiveTorch');
+
+  if (liveCameraStream) {
+    liveCameraStream.getTracks().forEach(t => t.stop());
+    liveCameraStream = null;
+  }
+
+  const constraints = {
+    video: {
+      facingMode: { ideal: currentFacingMode },
+      width: { ideal: 1920 },
+      height: { ideal: 1080 }
+    },
+    audio: false
+  };
+
+  liveCameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+  video.srcObject = liveCameraStream;
+  await video.play();
+
+  // Check torch capability
+  const track = liveCameraStream.getVideoTracks()[0];
+  const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+  if (btnTorch) {
+    btnTorch.style.display = capabilities.torch ? 'block' : 'none';
+    btnTorch.style.background = 'rgba(255,255,255,0.22)';
+    isTorchOn = false;
+  }
+}
+
+async function openLiveCamera(type) {
+  currentCameraType = type;
+  const modal = document.getElementById('liveCameraModal');
+  const titleText = document.getElementById('liveCameraTitleText');
+  const guideText = document.getElementById('liveCameraGuideText');
+
+  if (type === 'cont') {
+    if (titleText) titleText.textContent = 'Chụp ảnh Cửa Cont';
+    if (guideText) guideText.textContent = '🎯 Căn góc 1/4 trên bên phải cửa cont vào khung';
+  } else {
+    if (titleText) titleText.textContent = 'Chụp ảnh Số Seal (Chì)';
+    if (guideText) guideText.textContent = '🔒 Căn số chì (seal) vào giữa khung chữ nhật';
+  }
+
+  // If getUserMedia is not supported, fallback to inputCam
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    const fallbackInput = document.getElementById(type === 'cont' ? 'inputCamCont' : 'inputCamSeal');
+    if (fallbackInput) fallbackInput.click();
+    return;
+  }
+
+  if (modal) modal.style.display = 'flex';
+
+  try {
+    await startCameraStream();
+  } catch (err) {
+    console.warn('getUserMedia failed:', err);
+    closeLiveCamera();
+    // Fallback to native file input
+    const fallbackInput = document.getElementById(type === 'cont' ? 'inputCamCont' : 'inputCamSeal');
+    if (fallbackInput) fallbackInput.click();
+  }
+}
+
+function closeLiveCamera() {
+  const modal = document.getElementById('liveCameraModal');
+  const video = document.getElementById('liveCameraVideo');
+  if (liveCameraStream) {
+    liveCameraStream.getTracks().forEach(t => t.stop());
+    liveCameraStream = null;
+  }
+  if (video) video.srcObject = null;
+  if (modal) modal.style.display = 'none';
+  isTorchOn = false;
+}
+
+async function captureFromLiveCamera() {
+  const video = document.getElementById('liveCameraVideo');
+  const canvas = document.getElementById('liveCameraCanvas');
+  const flash = document.getElementById('liveCameraFlash');
+
+  if (!video || !video.videoWidth || !video.videoHeight) {
+    return;
+  }
+
+  // Flash animation
+  if (flash) {
+    flash.style.display = 'block';
+    setTimeout(() => { flash.style.display = 'none'; }, 100);
+  }
+
+  const track = liveCameraStream ? liveCameraStream.getVideoTracks()[0] : null;
+
+  // Try ImageCapture API first for highest sensor resolution
+  if (window.ImageCapture && track) {
+    try {
+      const imageCapture = new ImageCapture(track);
+      const photoBlob = await imageCapture.takePhoto();
+      closeLiveCamera();
+      await handleImageFile(photoBlob, currentCameraType);
+      return;
+    } catch (e) {
+      console.warn('ImageCapture failed, falling back to canvas:', e);
+    }
+  }
+
+  // Canvas capture
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  canvas.toBlob(async (blob) => {
+    closeLiveCamera();
+    if (blob) {
+      await handleImageFile(blob, currentCameraType);
+    }
+  }, 'image/jpeg', 0.95);
+}
+
+// ============================================================================
 // Image Selection & Auto-Trigger
 // ============================================================================
 function initImageInputs() {
@@ -858,7 +1045,9 @@ function initImageInputs() {
   const inputGalCont = document.getElementById('inputGalCont');
   const clearContBtn = document.getElementById('clearContImgBtn');
 
-  // Native label clicks trigger the corresponding file input automatically
+  if (btnCamCont) btnCamCont.addEventListener('click', () => openLiveCamera('cont'));
+  if (btnGalCont) btnGalCont.addEventListener('click', () => inputGalCont.click());
+
   inputCamCont.addEventListener('change', (e) => handleImageFile(e.target.files[0], 'cont'));
   inputGalCont.addEventListener('change', (e) => handleImageFile(e.target.files[0], 'cont'));
   clearContBtn.addEventListener('click', (e) => {
@@ -866,9 +1055,14 @@ function initImageInputs() {
     clearSlotImage('cont');
   });
 
+  const btnCamSeal = document.getElementById('btnCamSeal');
+  const btnGalSeal = document.getElementById('btnGalSeal');
   const inputCamSeal = document.getElementById('inputCamSeal');
   const inputGalSeal = document.getElementById('inputGalSeal');
   const clearSealBtn = document.getElementById('clearSealImgBtn');
+
+  if (btnCamSeal) btnCamSeal.addEventListener('click', () => openLiveCamera('seal'));
+  if (btnGalSeal) btnGalSeal.addEventListener('click', () => inputGalSeal.click());
 
   inputCamSeal.addEventListener('change', (e) => handleImageFile(e.target.files[0], 'seal'));
   inputGalSeal.addEventListener('change', (e) => handleImageFile(e.target.files[0], 'seal'));

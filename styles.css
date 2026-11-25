@@ -336,6 +336,15 @@ body {
   pointer-events: none !important;
 }
 
+#btnLiveShutter:active {
+  transform: scale(0.92);
+  transition: transform 0.08s ease;
+}
+
+#btnLiveTorch:active, #btnLiveSwitchCam:active, #btnLiveCloseCam:active {
+  background: rgba(255, 255, 255, 0.4) !important;
+}
+
 .btn-mini.camera {
   background: rgba(37, 99, 235, 0.25);
   border-color: rgba(59, 130, 246, 0.5);

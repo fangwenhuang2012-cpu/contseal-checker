@@ -11,7 +11,7 @@
   <meta http-equiv="Expires" content="0" />
   <title>ContSeal Checker - Kiểm tra Cont &amp; Seal</title>
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="styles.css?v=30" />
+  <link rel="stylesheet" href="styles.css?v=31" />
   <!-- SheetJS for Excel Read/Write -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- Tesseract.js for Free Local OCR -->
@@ -24,7 +24,7 @@
       <div class="brand">
         <div class="brand-icon">📦</div>
         <div>
-          <div class="brand-title">ContSeal Checker <span style="font-size:11px; color:#38bdf8; font-weight:600;">v30</span></div>
+          <div class="brand-title">ContSeal Checker <span style="font-size:11px; color:#38bdf8; font-weight:600;">v31</span></div>
           <div class="brand-sub">
             <span id="engineBadge" class="engine-badge">⚡ OCR Cửa Cont ISO + Seal Đa Góc</span>
           </div>
@@ -105,8 +105,8 @@
               <button class="clear-img-btn" id="clearContImgBtn" title="Xóa ảnh">✕</button>
             </div>
             <div class="slot-actions">
-              <label for="inputCamCont" class="btn-mini camera" id="btnCamCont">📷 Chụp</label>
-              <label for="inputGalCont" class="btn-mini" id="btnGalCont">🖼️ Thư viện</label>
+              <button type="button" class="btn-mini camera" id="btnCamCont">📷 Chụp</button>
+              <button type="button" class="btn-mini" id="btnGalCont">🖼️ Thư viện</button>
             </div>
             <input type="file" id="inputCamCont" accept="image/*" capture="environment" class="visually-hidden-input" />
             <input type="file" id="inputGalCont" accept="image/*" class="visually-hidden-input" />
@@ -125,8 +125,8 @@
               <button class="clear-img-btn" id="clearSealImgBtn" title="Xóa ảnh">✕</button>
             </div>
             <div class="slot-actions">
-              <label for="inputCamSeal" class="btn-mini camera" id="btnCamSeal">📷 Chụp</label>
-              <label for="inputGalSeal" class="btn-mini" id="btnGalSeal">🖼️ Thư viện</label>
+              <button type="button" class="btn-mini camera" id="btnCamSeal">📷 Chụp</button>
+              <button type="button" class="btn-mini" id="btnGalSeal">🖼️ Thư viện</button>
             </div>
             <input type="file" id="inputCamSeal" accept="image/*" capture="environment" class="visually-hidden-input" />
             <input type="file" id="inputGalSeal" accept="image/*" class="visually-hidden-input" />
@@ -398,12 +398,12 @@
             Tập trung hướng máy vào <strong>1/4 bên phải phía trên cửa</strong> (nơi in số Cont HACU 216056 9):
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-            <label for="inputCamCont" class="btn btn-primary" id="btnRetakeContCam" style="background:#2563eb; font-weight:700; font-size:13px; height:38px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            <button type="button" class="btn btn-primary" id="btnRetakeContCam" style="background:#2563eb; font-weight:700; font-size:13px; height:38px;">
               📷 Mở Camera chụp lại
-            </label>
-            <label for="inputGalCont" class="btn btn-outline" id="btnRetakeContGal" style="font-size:13px; height:38px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            </button>
+            <button type="button" class="btn btn-outline" id="btnRetakeContGal" style="font-size:13px; height:38px;">
               🖼️ Chọn từ thư viện
-            </label>
+            </button>
           </div>
         </div>
 
@@ -559,12 +559,12 @@
             <span>📸 Hoặc Chụp lại ảnh góc khác (nếu lóa sáng / quá mờ):</span>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-            <label for="inputCamSeal" class="btn btn-outline" id="btnRetakeSealCam" style="font-weight:700; font-size:12px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            <button type="button" class="btn btn-outline" id="btnRetakeSealCam" style="font-weight:700; font-size:12px; height:34px;">
               📷 Mở Camera
-            </label>
-            <label for="inputGalSeal" class="btn btn-outline" id="btnRetakeSealGal" style="font-size:12px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            </button>
+            <button type="button" class="btn btn-outline" id="btnRetakeSealGal" style="font-size:12px; height:34px;">
               🖼️ Thư viện ảnh
-            </label>
+            </button>
           </div>
         </div>
 
@@ -692,6 +692,58 @@
     </div>
   </div>
 
+  <!-- Live In-App Camera Viewfinder Modal (Bật trực tiếp ống kính Camera) -->
+  <div class="modal-backdrop" id="liveCameraModal" style="display:none; z-index:99999; background:#000; padding:0; position:fixed; inset:0; align-items:stretch; justify-content:stretch;">
+    <div style="position:relative; width:100%; height:100%; display:flex; flex-direction:column; background:#000; overflow:hidden;">
+      
+      <!-- Top Floating Bar -->
+      <div style="position:absolute; top:0; left:0; right:0; z-index:20; display:flex; justify-content:space-between; align-items:center; padding:16px 18px; background:linear-gradient(to bottom, rgba(0,0,0,0.85), transparent);">
+        <div id="liveCameraTitle" style="color:#fff; font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px;">
+          <span>📸</span> <span id="liveCameraTitleText">Chụp ảnh Cửa Cont</span>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button type="button" id="btnLiveTorch" style="display:none; background:rgba(255,255,255,0.22); border:none; border-radius:50%; width:38px; height:38px; color:#fef08a; font-size:18px; cursor:pointer;" title="Bật/Tắt đèn Flash">⚡</button>
+          <button type="button" id="btnLiveSwitchCam" style="background:rgba(255,255,255,0.22); border:none; border-radius:50%; width:38px; height:38px; color:#fff; font-size:18px; cursor:pointer;" title="Đổi camera">🔄</button>
+          <button type="button" id="btnLiveCloseCam" style="background:rgba(255,255,255,0.22); border:none; border-radius:50%; width:38px; height:38px; color:#fff; font-size:18px; cursor:pointer;" title="Đóng">✕</button>
+        </div>
+      </div>
+
+      <!-- Live Video Element -->
+      <video id="liveCameraVideo" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; display:block;"></video>
+      <canvas id="liveCameraCanvas" style="display:none;"></canvas>
+
+      <!-- Framing Guide Overlay (Khung ngắm căn góc) -->
+      <div id="liveCameraGuide" style="position:absolute; inset:70px 16px 140px 16px; border:2px dashed #38bdf8; border-radius:14px; pointer-events:none; box-shadow:0 0 0 9999px rgba(0,0,0,0.45); display:flex; flex-direction:column; justify-content:space-between; align-items:center; padding:12px;">
+        <div id="liveCameraGuideText" style="background:rgba(15,23,42,0.88); color:#38bdf8; font-size:12px; font-weight:700; padding:6px 12px; border-radius:20px; border:1px solid rgba(56,189,248,0.45); text-align:center;">
+          🎯 Căn góc 1/4 trên bên phải cửa cont vào khung
+        </div>
+        <div style="color:rgba(255,255,255,0.6); font-size:11px;">
+          Giữ máy cố định rồi bấm nút chụp tròn bên dưới
+        </div>
+      </div>
+
+      <!-- Flash Animation Overlay -->
+      <div id="liveCameraFlash" style="display:none; position:absolute; inset:0; background:#fff; z-index:30;"></div>
+
+      <!-- Bottom Controls Bar -->
+      <div style="position:absolute; bottom:0; left:0; right:0; z-index:20; display:flex; justify-content:space-around; align-items:center; padding:20px 24px 34px 24px; background:linear-gradient(to top, rgba(0,0,0,0.88), transparent);">
+        <button type="button" id="btnLivePickGallery" style="background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); border-radius:20px; color:#cbd5e1; font-size:12px; font-weight:600; padding:8px 14px; cursor:pointer;">
+          🖼️ Thư viện
+        </button>
+
+        <!-- Big Shutter Button -->
+        <button type="button" id="btnLiveShutter" style="width:74px; height:74px; border-radius:50%; background:#fff; border:4px solid rgba(255,255,255,0.5); box-shadow:0 0 25px rgba(255,255,255,0.4); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">
+          <div style="width:58px; height:58px; border-radius:50%; background:#2563eb; border:2px solid #fff;"></div>
+        </button>
+
+        <button type="button" id="btnLiveFallbackNative" style="background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); border-radius:20px; color:#cbd5e1; font-size:12px; font-weight:600; padding:8px 14px; cursor:pointer;">
+          📱 App Camera
+        </button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Full-Screen Image Lightbox Modal (Xem full ảnh + Phóng to + Xoay 90 độ) -->
   <div class="lightbox-backdrop" id="imageLightboxModal">
     <div class="lightbox-topbar">
@@ -716,6 +768,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=30"></script>
+  <script src="app.js?v=31"></script>
 </body>
 </html>
