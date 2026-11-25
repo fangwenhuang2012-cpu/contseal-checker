@@ -1198,6 +1198,18 @@ body {
 .gemini-input-row {
   display: flex;
   gap: 8px;
+  width: 100%;
+}
+
+.gemini-input-row input {
+  flex: 1 1 auto;
+  width: auto !important;
+  min-width: 0;
+}
+
+.gemini-input-row button {
+  flex: 0 0 auto;
+  width: auto !important;
 }
 
 .gemini-active-banner {

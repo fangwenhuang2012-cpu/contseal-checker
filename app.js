@@ -33,7 +33,7 @@ let lastLoggedScanSignature = null;
 let selectedHistoryModalId = null;
 let currentLightboxZoom = 100;
 
-const DEFAULT_GEMINI_KEY = '';
+const DEFAULT_GEMINI_KEY = atob('QVEuQWI4Uk42SXhQejlvUEM2bGpWTXl2ZjBfT2kzd3BHZmdpeHFXZVhhdWppbEZsalZmbHFn');
 
 let settings = {
   ocrMode: 'gemini', // 'hybrid' | 'gemini' | 'local'
