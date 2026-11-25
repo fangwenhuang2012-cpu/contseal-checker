@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>ContSeal Checker - Kiểm tra Cont &amp; Seal</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css?v=29" />
+  <!-- SheetJS for Excel Read/Write -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Tesseract.js for Free Local OCR -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">📦</div>
+        <div>
+          <div class="brand-title">ContSeal Checker <span style="font-size:11px; color:#38bdf8; font-weight:600;">v29</span></div>
+          <div class="brand-sub">
+            <span id="engineBadge" class="engine-badge">⚡ OCR Cửa Cont ISO + Seal Đa Góc</span>
+          </div>
+        </div>
+      </div>
+      <button class="icon-btn" id="openSettingsBtn" title="Cài đặt AI / OCR">⚙️</button>
+    </header>
+
+    <!-- Vessel Dashboard (Replaces old generic status strip) -->
+    <section id="vesselDashboard" class="vessel-dashboard"></section>
+
+    <!-- Global Storage Warning Banner (Appears automatically only when storage >= 70%) -->
+    <div id="storageGlobalAlert" class="storage-global-alert" style="display:none;">
+      <div id="storageGlobalAlertText">⚠️ Bộ nhớ trình duyệt đã đầy ≥ 70%! Hãy Archive chuyến tàu về máy tính.</div>
+      <button class="btn btn-primary btn-sm" id="btnJumpToArchive" style="flex-shrink:0;">📦 Archive ngay</button>
+    </div>
+
+    <!-- TAB 1: KIỂM TRA CONT & SEAL (TÍCH HỢP 1 BƯỚC) -->
+    <main id="tab-check" class="tab-panel active">
+      <!-- Gemini AI Vision Quick Setup & Status Banner -->
+      <div id="geminiQuickBanner" class="gemini-quick-banner" style="display:none;">
+        <div class="gemini-banner-header">
+          <div class="gemini-banner-title">
+            <span style="font-size:16px;">✨</span>
+            <strong style="color:#93c5fd; font-size:13px;">Bật Gemini AI Vision (Đọc chuẩn 100% trong 1s)</strong>
+          </div>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="gemini-key-link" title="Lấy API Key Google miễn phí">Lấy Key miễn phí ↗</a>
+        </div>
+        <p class="gemini-banner-desc">
+          Gemini đã tích hợp sẵn! Nhập API Key để AI đọc chuẩn số Cont &amp; Seal cối xoay dọc, mờ rỉ sét, loại bỏ hoàn toàn mã vạch và số tải trọng:
+        </p>
+        <div class="gemini-input-row">
+          <input
+            type="password"
+            id="quickGeminiKeyInput"
+            class="input-box"
+            placeholder="Dán mã Gemini API Key vào đây (AIzaSy...)"
+            style="font-size:12.5px; height:38px; text-transform:none; border-color:#3b82f6;"
+            autocomplete="off"
+          />
+          <button type="button" class="btn btn-primary" id="btnQuickSaveGemini" style="height:38px; padding:0 14px; white-space:nowrap; font-weight:700; background:#2563eb; flex-shrink:0;">
+            🚀 Bật ngay
+          </button>
+        </div>
+      </div>
+
+      <div id="geminiActiveBanner" class="gemini-active-banner" style="display:none;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:18px;">✨</span>
+          <div>
+            <div style="font-size:12.5px; font-weight:700; color:#34d399;">Đang bật: Gemini AI Vision (Đọc siêu tốc 1s, chuẩn 100%)</div>
+            <div style="font-size:11px; color:var(--text-muted);">Tự động nhận diện Cont ISO &amp; Seal đa góc chính xác</div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" id="btnQuickEditGemini" style="height:30px; padding:0 10px; font-size:11.5px; border-color:rgba(52,211,153,0.4); color:#34d399;">
+          ⚙️ Cài đặt
+        </button>
+      </div>
+
+      <!-- Unified Card: Gửi ảnh -> Tự động trích xuất & Đối chiếu luôn -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📸 Gửi ảnh Cửa Cont &amp; Seal (Tự động kiểm tra)</div>
+          <button class="btn btn-outline btn-sm" id="resetScanBtn" style="padding:4px 9px; font-size:11px;">🔄 Làm mới</button>
+        </div>
+
+        <div class="photo-grid">
+          <!-- Container Door Photo Slot -->
+          <div class="photo-slot" id="slotCont">
+            <div class="slot-label">1. Ảnh Mặt Cửa Cont <span style="font-size:10px; color:#38bdf8; font-weight:700;">(Quét 1/4 trên phải)</span></div>
+            <div class="preview-wrap" id="previewWrapCont" title="Bấm vào ảnh để xem phóng to toàn màn hình">
+              <div class="preview-placeholder" id="placeholderCont">
+                <span class="big-ic">🚛</span>
+                <span>Chụp / chọn ảnh mặt cửa (quét 1/4 trên bên phải)</span>
+              </div>
+              <img id="imgPreviewCont" alt="Ảnh cửa cont" style="display:none;" />
+              <span class="zoom-hint-badge">🔍 Xem full</span>
+              <button class="clear-img-btn" id="clearContImgBtn" title="Xóa ảnh">✕</button>
+            </div>
+            <div class="slot-actions">
+              <button class="btn-mini camera" id="btnCamCont">📷 Chụp</button>
+              <button class="btn-mini" id="btnGalCont">🖼️ Thư viện</button>
+            </div>
+            <input type="file" id="inputCamCont" accept="image/*" capture="environment" hidden />
+            <input type="file" id="inputGalCont" accept="image/*" hidden />
+          </div>
+
+          <!-- Seal Photo Slot (Tự động đọc mọi góc xoay dọc/ngang/nghiêng) -->
+          <div class="photo-slot" id="slotSeal">
+            <div class="slot-label">2. Ảnh Số Seal (Chì)</div>
+            <div class="preview-wrap" id="previewWrapSeal" title="Bấm vào ảnh để xem phóng to toàn màn hình">
+              <div class="preview-placeholder" id="placeholderSeal">
+                <span class="big-ic">🔒</span>
+                <span>Tự động đọc Seal dọc / ngang</span>
+              </div>
+              <img id="imgPreviewSeal" alt="Ảnh số seal" style="display:none;" />
+              <span class="zoom-hint-badge">🔍 Xem full</span>
+              <button class="clear-img-btn" id="clearSealImgBtn" title="Xóa ảnh">✕</button>
+            </div>
+            <div class="slot-actions">
+              <button class="btn-mini camera" id="btnCamSeal">📷 Chụp</button>
+              <button class="btn-mini" id="btnGalSeal">🖼️ Thư viện</button>
+            </div>
+            <input type="file" id="inputCamSeal" accept="image/*" capture="environment" hidden />
+            <input type="file" id="inputGalSeal" accept="image/*" hidden />
+          </div>
+        </div>
+
+        <!-- Nút Tích Hợp Duy Nhất: Trích xuất & Đối chiếu luôn -->
+        <button class="btn btn-primary" id="btnOneStepCheck">
+          ⚡ Kiểm tra &amp; Đối chiếu ngay
+        </button>
+
+        <div class="ocr-status" id="ocrStatusBox">
+          <div class="spinner"></div>
+          <div id="ocrStatusText">Đang trích xuất số Cont &amp; Seal (dọc/ngang) và đối chiếu Excel...</div>
+        </div>
+
+        <!-- Khu vực hiển thị số đã trích xuất (tự động đối chiếu lại ngay khi gõ sửa) -->
+        <div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(71,85,105,0.45);">
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px; display:flex; justify-content:space-between;">
+            <span>✍️ <strong>Số trích xuất từ ảnh</strong> (Sửa tay sẽ tự đối chiếu lại ngay):</span>
+          </div>
+          <div class="form-row" style="margin-top:4px;">
+            <div class="field-group">
+              <label for="inputContNo">
+                <span>SỐ CONTAINER</span>
+                <span id="isoBadge" class="iso-tag" style="display:none;"></span>
+              </label>
+              <input
+                type="text"
+                id="inputContNo"
+                class="input-box"
+                placeholder="Tự động điền..."
+                autocomplete="off"
+              />
+            </div>
+            <div class="field-group">
+              <label for="inputSealNo" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>SỐ SEAL THỰC TẾ</span>
+                <button type="button" id="btnOpenManualSealModal" style="background:none; border:none; color:#38bdf8; font-size:11px; font-weight:600; cursor:pointer; padding:0; display:inline-flex; align-items:center; gap:3px;">
+                  ✏️ Xác nhận tay
+                </button>
+              </label>
+              <input
+                type="text"
+                id="inputSealNo"
+                class="input-box"
+                placeholder="Tự động điền..."
+                autocomplete="off"
+              />
+            </div>
+          </div>
+
+          <!-- Gợi ý chọn nhanh nếu chữ mờ -->
+          <div id="suggestionsBar" class="suggestions-bar"></div>
+        </div>
+      </div>
+
+      <!-- Comparison Result Banner -->
+      <div id="resultBanner" class="result-banner">
+        <div class="result-header">
+          <div class="result-icon" id="resultIcon">✅</div>
+          <div>
+            <div class="result-title" id="resultTitle">KHỚP HOÀN TOÀN</div>
+            <div class="result-sub" id="resultSub">Số Container và Số Seal trùng khớp với danh sách Excel</div>
+          </div>
+        </div>
+
+        <div class="compare-table">
+          <div class="compare-row">
+            <span>Số Container:</span>
+            <span class="mono-val" id="resContVal">-</span>
+          </div>
+          <div class="compare-row">
+            <span>Số Seal trên ảnh:</span>
+            <span class="mono-val" id="resActualSealVal">-</span>
+          </div>
+          <div class="compare-row">
+            <span>Số Seal trong Excel:</span>
+            <span class="mono-val" id="resExpectedSealVal">-</span>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-primary" id="btnSaveAndNext">
+            💾 Lưu vào lịch sử &amp; Kiểm cont tiếp
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- TAB 2: DANH SÁCH EXCEL -->
+    <main id="tab-excel" class="tab-panel">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📊 Quản lý file Excel Chuyến Tàu</div>
+        </div>
+        <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:12px;">
+          Hỗ trợ file <strong>.xlsx, .xls, .csv</strong> có cột <strong>Tên Tàu (Vessel Name / VSL Name / Arrived by...)</strong>, <strong>Số Container</strong> và <strong>Số Seal</strong>.
+        </p>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <button class="btn btn-primary" id="btnUploadExcelMain">📂 Chọn file Excel</button>
+          <button class="btn btn-outline" id="btnDownloadTemplate">📥 Tải file mẫu</button>
+        </div>
+        <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" hidden />
+
+        <!-- Column Mapping Section -->
+        <div id="columnMapBox" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
+          <div style="font-size:12.5px; font-weight:700; margin-bottom:8px;">Chọn cột tương ứng trong file Excel:</div>
+          <div class="field-group" style="margin-bottom:8px;">
+            <label>Cột Tên Tàu (Vessel Name / VSL Name / Arrived by...)</label>
+            <select id="selectColVessel" class="select-box"></select>
+          </div>
+          <div class="form-row">
+            <div class="field-group">
+              <label>Cột Số Container</label>
+              <select id="selectColCont" class="select-box"></select>
+            </div>
+            <div class="field-group">
+              <label>Cột Số Seal</label>
+              <select id="selectColSeal" class="select-box"></select>
+            </div>
+          </div>
+          <button class="btn btn-success btn-sm" id="btnApplyColumns" style="margin-top:10px; width:100%;">
+            Áp dụng cột đã chọn
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📋 Danh sách Container (<span id="excelCountLabel">0</span>)</div>
+          <button class="btn btn-outline btn-sm" id="btnClearExcel" style="color:#f87171; border-color:rgba(248,113,113,0.4);">Xóa DS</button>
+        </div>
+
+        <div class="filter-bar">
+          <input
+            type="text"
+            id="searchExcelInput"
+            class="input-box"
+            style="font-size:13px; padding:8px 10px;"
+            placeholder="Tìm nhanh số Cont hoặc Seal..."
+          />
+          <select id="filterExcelStatus" class="select-box" style="width:135px;">
+            <option value="all">Tất cả</option>
+            <option value="pending">Chưa kiểm</option>
+            <option value="match">Đã khớp</option>
+            <option value="mismatch">Sai seal</option>
+          </select>
+        </div>
+
+        <div id="excelListContainer" class="cont-list"></div>
+      </div>
+    </main>
+
+    <!-- TAB 3: LỊCH SỬ & XUẤT BÁO CÁO -->
+    <main id="tab-history" class="tab-panel">
+      <div class="card" id="storageArchiveCard">
+        <div class="card-header">
+          <div class="card-title">🚢 Chốt &amp; Archive Trọn Chuyến Tàu</div>
+        </div>
+        <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:10px;">
+          Đóng gói dứt khoát <strong>trọn bộ danh sách Excel của tàu đang kiểm</strong> (<strong id="currentVesselNameLabel" style="color:#38bdf8;">Chưa tải DS</strong>) kèm toàn bộ hình ảnh Cửa Cont &amp; Số Seal về máy tính.
+        </p>
+
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <button class="btn btn-primary" id="btnArchiveFullToPc" style="width:100%;">
+            📦 Archive Trọn Tàu về Máy tính (Theo DS Excel + Ảnh)
+          </button>
+          <button class="btn btn-success" id="btnExportExcel" style="width:100%;">
+            📊 Xuất file Excel báo cáo (.xlsx)
+          </button>
+        </div>
+
+        <div id="archiveActionStatus" style="display:none; margin-top:10px; font-size:12px; padding:9px 11px; border-radius:8px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🕒 Lịch sử kiểm tra (<span id="historyCountLabel">0</span>)</div>
+          <span class="badge pending" style="font-size:10.5px;">🔒 Chỉ tra cứu (Cấm sửa / xóa)</span>
+        </div>
+        <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:10px;">
+          💡 Lịch sử được khóa cố định làm bằng chứng đối chiếu. Bấm vào dòng bất kỳ để tra cứu lại thông tin &amp; hình ảnh Cửa Cont / Số Seal.
+        </div>
+        <div class="filter-bar" style="margin-bottom:10px;">
+          <input
+            type="text"
+            id="searchHistoryInput"
+            class="input-box"
+            style="font-size:13px; padding:8px 12px; font-weight:500;"
+            placeholder="Tra cứu nhanh số Cont hoặc số Seal..."
+          />
+          <select id="filterHistoryStatus" class="select-box" style="width:135px;">
+            <option value="all">Tất cả</option>
+            <option value="match">Đã khớp</option>
+            <option value="mismatch">Sai lệch</option>
+          </select>
+        </div>
+        <div id="historyListContainer" class="cont-list"></div>
+      </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="tab-check">
+        <span class="nav-ic">📷</span>
+        <span>Kiểm tra</span>
+      </button>
+      <button class="nav-item" data-tab="tab-excel">
+        <span class="nav-ic">📊</span>
+        <span>DS Excel</span>
+      </button>
+      <button class="nav-item" data-tab="tab-history">
+        <span class="nav-ic">📋</span>
+        <span>Lịch sử / Xuất</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Popup 2 Option khi KHÔNG ĐỌC ĐƯỢC SỐ CONTAINER: [Chụp lại] hoặc [Nhập tay vào ô riêng biệt] -->
+  <div class="modal-backdrop" id="contConfirmModal">
+    <div class="modal-card" style="max-width:480px;">
+      <div class="card-header" style="align-items:flex-start;">
+        <div>
+          <div class="card-title" id="contModalTitle" style="color:#f59e0b; display:flex; align-items:center; gap:6px;">
+            ⚠️ Không đọc được Số Container
+          </div>
+          <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;" id="contModalSub">
+            Chọn 1 trong 2 cách: Chụp lại góc 1/4 trên bên phải hoặc Nhập tay vào ô riêng biệt bên dưới
+          </div>
+        </div>
+        <button class="icon-btn" id="btnCloseContModal" style="width:30px;height:30px;font-size:14px;">✕</button>
+      </div>
+
+      <!-- Alert Message Box -->
+      <div id="contModalAlert" style="margin:10px 0; padding:10px 12px; border-radius:10px; font-size:12.5px; line-height:1.45; font-weight:600; background:rgba(245,158,11,0.16); border:1px solid rgba(245,158,11,0.5); color:#fcd34d;">
+        ⚠️ Chưa nhận diện rõ Số Container từ ảnh. Vui lòng chọn Chụp lại (1/4 trên phải) hoặc Nhập tay vào ô riêng biệt.
+      </div>
+
+      <!-- Container Image Preview with Quick Zoom -->
+      <div style="margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+          <span style="font-size:11.5px; font-weight:700; color:var(--text-muted);">
+            📸 Ảnh Cửa Cont vừa chọn (Bấm để xem phóng to):
+          </span>
+          <button type="button" id="btnZoomModalCont" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px; height:auto;">
+            🔍 Phóng to ảnh
+          </button>
+        </div>
+        <div id="contModalImgWrap" style="height:175px; background:#020617; border:1px solid var(--border); border-radius:10px; overflow:hidden; display:flex; align-items:center; justify-content:center; cursor:zoom-in; position:relative;">
+          <img id="contModalImg" src="" alt="Ảnh Cửa Cont" style="max-width:100%; max-height:100%; object-fit:contain; display:none;" />
+          <div id="contModalNoImgText" style="font-size:12px; color:var(--text-muted);">Chưa có ảnh Cửa Cont</div>
+          <span id="contModalImgHintBadge" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.75); color:#e2e8f0; font-size:10px; padding:2px 6px; border-radius:4px; display:none;">
+            🔍 Chạm để mở to
+          </span>
+        </div>
+      </div>
+
+      <!-- 2 OPTIONS CONTAINER -->
+      <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:12px;">
+        
+        <!-- OPTION 1: CHỤP LẠI (TẬP TRUNG 1/4 TRÊN BÊN PHẢI) -->
+        <div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.35); border-radius:12px; padding:12px;">
+          <div style="font-size:12px; font-weight:700; color:#60a5fa; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+            <span>📸 OPTION 1: CHỤP LẠI ẢNH CỬA CONT</span>
+          </div>
+          <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">
+            Tập trung hướng máy vào <strong>1/4 bên phải phía trên cửa</strong> (nơi in số Cont HACU 216056 9):
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <button type="button" class="btn btn-primary" id="btnRetakeContCam" style="background:#2563eb; font-weight:700; font-size:13px; height:38px;">
+              📷 Mở Camera chụp lại
+            </button>
+            <button type="button" class="btn btn-outline" id="btnRetakeContGal" style="font-size:13px; height:38px;">
+              🖼️ Chọn từ thư viện
+            </button>
+          </div>
+        </div>
+
+        <!-- OPTION 2: NHẬP TAY (VÀO Ô RIÊNG BIỆT TRONG POPUP) -->
+        <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.35); border-radius:12px; padding:12px;">
+          <div style="font-size:12px; font-weight:700; color:#fbbf24; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+            <span>✏️ OPTION 2: NHẬP TAY SỐ CONTAINER VÀO ĐÂY</span>
+            <span style="font-size:10px; background:rgba(245,158,11,0.25); color:#fcd34d; padding:1px 6px; border-radius:4px; font-weight:700;">Ô RIÊNG BIỆT</span>
+          </div>
+          <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">
+            Nhìn số trên ảnh phóng to ở trên và gõ số Container vào ô riêng biệt này:
+          </div>
+          
+          <div style="margin-bottom:8px;">
+            <input
+              type="text"
+              id="manualContInput"
+              class="input-box"
+              placeholder="VD: HACU2160569..."
+              style="font-size:20px; font-weight:900; text-align:center; letter-spacing:1.5px; color:#38bdf8; border:2px solid #0284c7; background:#020617; text-transform:uppercase; height:46px; border-radius:10px; width:100%;"
+              autocomplete="off"
+              autocapitalize="characters"
+            />
+          </div>
+
+          <!-- Quick Candidate Suggestions from Excel -->
+          <div id="contModalCandidatesWrap" style="margin-bottom:10px; display:none;">
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:5px; font-weight:600;">
+              💡 Bấm 1 chạm để chọn nhanh số Cont từ file Excel:
+            </div>
+            <div id="contModalCandidatesList" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+          </div>
+
+          <button type="button" class="btn btn-primary" id="btnConfirmContModal" style="width:100%; font-weight:800; font-size:14px; background:#16a34a; height:42px;">
+            ✅ Xác nhận Số Cont &amp; Tiếp tục
+          </button>
+        </div>
+
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:10px;">
+        <span style="font-size:11px; color:#94a3b8;">
+          🔒 Hình ảnh chụp được lưu trữ đầy đủ để đối chứng
+        </span>
+        <button type="button" class="btn btn-outline btn-sm" id="btnDismissContModal">
+          Đóng
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Popup 2 Option khi không đọc được / không khớp: [Chụp lại] hoặc [Nhập tay vào ô riêng biệt] -->
+  <div class="modal-backdrop" id="sealConfirmModal">
+    <div class="modal-card" style="max-width:480px;">
+      <div class="card-header" style="align-items:flex-start;">
+        <div>
+          <div class="card-title" id="sealModalTitle" style="color:#f59e0b; display:flex; align-items:center; gap:6px;">
+            ⚠️ Không đọc được số Seal
+          </div>
+          <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;" id="sealModalSub">
+            Chọn 1 trong 2 cách: Chụp lại ảnh rõ hơn hoặc Nhập tay vào ô riêng biệt bên dưới
+          </div>
+        </div>
+        <button class="icon-btn" id="btnCloseSealModal" style="width:30px;height:30px;font-size:14px;">✕</button>
+      </div>
+
+      <!-- Alert Message Box -->
+      <div id="sealModalAlert" style="margin:10px 0; padding:10px 12px; border-radius:10px; font-size:12.5px; line-height:1.45; font-weight:600; background:rgba(245,158,11,0.16); border:1px solid rgba(245,158,11,0.5); color:#fcd34d;">
+        ⚠️ Chưa bắt rõ ký tự trên ảnh Seal. Vui lòng chọn Chụp lại hoặc Nhập tay.
+      </div>
+
+      <!-- Container & Excel Info Grid -->
+      <div style="background:rgba(15,23,42,0.7); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:12px; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div>
+          <div style="font-size:10.5px; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Số Container</div>
+          <div id="sealModalContNo" style="font-size:15px; font-weight:800; color:#38bdf8; font-family:monospace; margin-top:2px;">-</div>
+        </div>
+        <div>
+          <div style="font-size:10.5px; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Seal trong Excel</div>
+          <div id="sealModalExpectedSeal" style="font-size:15px; font-weight:800; color:#34d399; font-family:monospace; margin-top:2px;">-</div>
+        </div>
+      </div>
+
+      <!-- Seal Image Preview with Rotation & Quick Zoom -->
+      <div style="margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+          <span style="font-size:12px; font-weight:700; color:#cbd5e1;">
+            📸 Ảnh Seal vừa chụp (xoay để dễ nhìn):
+          </span>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button type="button" id="btnRotateModalSealLeft" class="btn btn-outline btn-sm" title="Xoay trái 90 độ" style="padding:4px 8px; font-size:12px; height:auto; background:var(--surface-2); font-weight:700; border-color:var(--border);">
+              ↶ Xoay trái 90°
+            </button>
+            <button type="button" id="btnRotateModalSealRight" class="btn btn-outline btn-sm" title="Xoay phải 90 độ" style="padding:4px 8px; font-size:12px; height:auto; background:var(--surface-2); font-weight:700; border-color:var(--border);">
+              ↷ Xoay phải 90°
+            </button>
+            <button type="button" id="btnZoomModalSeal" class="btn btn-outline btn-sm" style="padding:4px 8px; font-size:11px; height:auto;">
+              🔍 Phóng to
+            </button>
+          </div>
+        </div>
+        <div id="sealModalImgWrap" style="height:230px; background:#020617; border:1px solid var(--border); border-radius:10px; overflow:hidden; display:flex; align-items:center; justify-content:center; cursor:zoom-in; position:relative;">
+          <img id="sealModalImg" src="" alt="Ảnh chụp Seal" style="max-width:100%; max-height:100%; object-fit:contain; display:none; transition:transform 0.2s ease;" />
+          <div id="sealModalNoImgText" style="font-size:12px; color:var(--text-muted);">Chưa có ảnh chụp Seal</div>
+          <span id="sealModalImgHintBadge" style="position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,0.75); color:#e2e8f0; font-size:10px; padding:2px 6px; border-radius:4px; display:none;">
+            🔍 Chạm để mở to
+          </span>
+        </div>
+      </div>
+
+      <!-- 2 OPTIONS CONTAINER: NHẬP TAY ĐẶT TRỰC TIẾP DƯỚI ẢNH ĐỂ VỪA NHÌN VỪA GÕ -->
+      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;">
+        
+        <!-- OPTION 1 ƯU TIÊN: NHẬP TAY VÀO ĐÂY (ĐI CHUNG MÀN HÌNH VỚI HÌNH SEAL Ở TRÊN) -->
+        <div style="background:rgba(245,158,11,0.09); border:1.5px solid rgba(245,158,11,0.45); border-radius:12px; padding:12px;">
+          <div style="font-size:12.5px; font-weight:800; color:#fbbf24; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between;">
+            <span>✏️ NHẬP TAY SỐ SEAL VÀO ĐÂY</span>
+            <span style="font-size:10px; background:rgba(245,158,11,0.25); color:#fcd34d; padding:2px 8px; border-radius:4px; font-weight:700;">ĐỐI CHIẾU ẢNH TRÊN</span>
+          </div>
+          <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:8px;">
+            Nhìn số trên ảnh phía trên (bấm <strong>Xoay 90°</strong> nếu ảnh bị nghiêng/dọc) và gõ trực tiếp:
+          </div>
+          
+          <div style="margin-bottom:8px;">
+            <input
+              type="text"
+              id="manualSealInput"
+              class="input-box"
+              placeholder="Gõ số seal vào đây..."
+              style="font-size:20px; font-weight:900; text-align:center; letter-spacing:1.5px; color:#fbbf24; border:2px solid #f59e0b; background:#020617; text-transform:uppercase; height:46px; border-radius:10px; width:100%;"
+              autocomplete="off"
+              autocapitalize="characters"
+            />
+          </div>
+
+          <!-- Quick Candidate Suggestions -->
+          <div id="sealModalCandidatesWrap" style="margin-bottom:10px; display:none;">
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:5px; font-weight:600;">
+              💡 Gợi ý nhận dạng từ ảnh / Excel (bấm để điền nhanh):
+            </div>
+            <div id="sealModalCandidatesList" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+          </div>
+
+          <button type="button" class="btn btn-primary" id="btnConfirmSealModal" style="width:100%; font-weight:800; font-size:14px; background:#16a34a; height:44px; border:none; display:flex; align-items:center; justify-content:center; gap:8px;">
+            <span>✅ Xác nhận số đã nhập &amp; Đối chiếu ngay</span>
+          </button>
+        </div>
+
+        <!-- OPTION 2 PHỤ: CHỤP LẠI (NẾU ẢNH MỜ / LÓA KHÔNG THẤY SỐ) -->
+        <div style="background:rgba(59,130,246,0.06); border:1px dashed rgba(59,130,246,0.3); border-radius:10px; padding:10px;">
+          <div style="font-size:11.5px; font-weight:700; color:#60a5fa; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+            <span>📸 Hoặc Chụp lại ảnh góc khác (nếu lóa sáng / quá mờ):</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <button type="button" class="btn btn-outline" id="btnRetakeSealCam" style="font-weight:700; font-size:12px; height:34px;">
+              📷 Mở Camera
+            </button>
+            <button type="button" class="btn btn-outline" id="btnRetakeSealGal" style="font-size:12px; height:34px;">
+              🖼️ Thư viện ảnh
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:10px;">
+        <span style="font-size:11px; color:#94a3b8;">
+          🔒 Hình ảnh chụp được lưu trữ đầy đủ để đối chứng
+        </span>
+        <button type="button" class="btn btn-outline btn-sm" id="btnDismissSealModal">
+          Đóng
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Settings Modal (Gemini API + Free OCR configuration) -->
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal-card">
+      <div class="card-header">
+        <div class="card-title">⚙️ Cấu hình nhận diện chữ (OCR)</div>
+        <button class="icon-btn" id="closeSettingsBtn" style="width:30px;height:30px;font-size:14px;">✕</button>
+      </div>
+
+      <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:12px;">
+        Bạn có thể chọn kết hợp Gemini AI (đọc cực chuẩn cả ảnh chụp nghiêng, chữ dọc trên seal cối, chữ mờ, rỉ sét) hoặc OCR miễn phí chạy trực tiếp trên máy.
+      </p>
+
+      <label class="radio-card">
+        <input type="radio" name="ocrMode" value="hybrid" checked />
+        <div>
+          <div style="font-weight:700; font-size:13.5px;">🚀 Kết hợp thông minh (Khuyên dùng)</div>
+          <div style="font-size:11.5px; color:var(--text-muted);">
+            Tự động dùng Gemini AI nếu đã nhập API Key; nếu chưa có Key hoặc mất mạng sẽ chuyển sang OCR miễn phí (đa góc xoay 0°/90°/270°).
+          </div>
+        </div>
+      </label>
+
+      <label class="radio-card">
+        <input type="radio" name="ocrMode" value="gemini" />
+        <div>
+          <div style="font-weight:700; font-size:13.5px;">✨ Chỉ dùng Gemini AI Vision</div>
+          <div style="font-size:11.5px; color:var(--text-muted);">
+            Độ chính xác cao nhất với ảnh thực tế ngoài bãi/cảng. Yêu cầu có Gemini API Key.
+          </div>
+        </div>
+      </label>
+
+      <label class="radio-card">
+        <input type="radio" name="ocrMode" value="local" />
+        <div>
+          <div style="font-weight:700; font-size:13.5px;">⚡ Chỉ dùng OCR miễn phí (Tesseract Đa Góc + ISO)</div>
+          <div style="font-size:11.5px; color:var(--text-muted);">
+            Hoàn toàn miễn phí, tự động cắt vùng Seal màu vàng/sáng và xoay 90°/270° để đọc chữ dọc.
+          </div>
+        </div>
+      </label>
+
+      <div style="margin-top:12px;">
+        <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">
+          Gemini API Key (Tùy chọn - lấy miễn phí tại aistudio.google.com):
+        </label>
+        <input
+          type="password"
+          id="inputGeminiKey"
+          class="input-box"
+          style="font-size:13px; text-transform:none; font-family:sans-serif;"
+          placeholder="AIzaSy..."
+        />
+        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
+          🔒 Key chỉ lưu cục bộ trên trình duyệt điện thoại của bạn.
+        </div>
+      </div>
+
+      <div style="margin-top:16px; display:flex; gap:8px;">
+        <button class="btn btn-primary" id="saveSettingsBtn">Lưu cài đặt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Detail Modal (Chỉ tra cứu hình ảnh Cont & Seal từ lịch sử - Không cho phép chỉnh sửa) -->
+  <div class="modal-backdrop" id="historyDetailModal">
+    <div class="modal-card" style="max-width:480px;">
+      <div class="card-header">
+        <div class="card-title" id="histModalTitle">📋 Tra cứu chi tiết lần kiểm tra</div>
+        <button class="icon-btn" id="closeHistModalBtn" style="width:30px;height:30px;font-size:14px;">✕</button>
+      </div>
+
+      <div style="font-size:11.5px; color:#93c5fd; background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.35); border-radius:8px; padding:8px 10px; margin-bottom:10px;">
+        🔒 <strong>Chế độ Chỉ Tra Cứu:</strong> Bản ghi lịch sử và hình ảnh đã được khóa cố định, không cho phép chỉnh sửa hay xóa.
+      </div>
+
+      <div class="compare-table" id="histModalMeta" style="margin-bottom:12px;"></div>
+
+      <div style="font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:8px;">
+        📸 Hình ảnh đối chứng đã lưu (Bấm vào từng ảnh để xem Full màn hình):
+      </div>
+
+      <div class="photo-grid" style="margin-bottom:14px;">
+        <div class="photo-slot has-image" style="min-height:150px; padding:8px;">
+          <div class="slot-label">1. Ảnh Mặt Cửa Cont</div>
+          <div class="preview-wrap" id="histWrapCont" style="height:125px; margin-bottom:0; cursor:zoom-in;">
+            <div class="preview-placeholder" id="histEmptyCont">Không có ảnh Cont</div>
+            <img id="histImgCont" alt="Ảnh Cont lịch sử" style="display:none;" />
+            <span class="zoom-hint-badge" id="histZoomBadgeCont">🔍 Xem full</span>
+          </div>
+        </div>
+
+        <div class="photo-slot has-image" style="min-height:150px; padding:8px;">
+          <div class="slot-label">2. Ảnh Số Seal (Chì)</div>
+          <div class="preview-wrap" id="histWrapSeal" style="height:125px; margin-bottom:0; cursor:zoom-in;">
+            <div class="preview-placeholder" id="histEmptySeal">Không có ảnh Seal</div>
+            <img id="histImgSeal" alt="Ảnh Seal lịch sử" style="display:none;" />
+            <span class="zoom-hint-badge" id="histZoomBadgeSeal">🔍 Xem full</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-outline" id="btnCloseHistBottom" style="width:100%;">
+          Đóng cửa sổ tra cứu
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full-Screen Image Lightbox Modal (Xem full ảnh + Phóng to + Xoay 90 độ) -->
+  <div class="lightbox-backdrop" id="imageLightboxModal">
+    <div class="lightbox-topbar">
+      <div class="lightbox-title" id="lightboxTitle">Xem ảnh</div>
+      <div class="lightbox-controls">
+        <button class="lightbox-btn" id="btnLightboxRotateLeft" title="Xoay trái 90°">↶ Xoay trái</button>
+        <button class="lightbox-btn" id="btnLightboxRotateRight" title="Xoay phải 90°">↷ Xoay phải</button>
+        <button class="lightbox-btn" id="btnZoomOut" title="Thu nhỏ">➖</button>
+        <button class="lightbox-btn" id="btnZoomReset" title="Mặc định">100%</button>
+        <button class="lightbox-btn" id="btnZoomIn" title="Phóng to">➕</button>
+        <button class="lightbox-btn close" id="btnCloseLightbox" title="Đóng">✕ Đóng</button>
+      </div>
+    </div>
+    <div class="lightbox-stage" id="lightboxStage">
+      <img id="lightboxImg" alt="Full preview" />
+    </div>
+    <!-- Quick bottom input dock when viewing seal in lightbox -->
+    <div class="lightbox-bottom-dock" id="lightboxSealDock" style="display:none; padding:10px 16px; background:rgba(15,23,42,0.96); border-top:1px solid rgba(71,85,105,0.5); gap:10px; align-items:center;">
+      <span style="font-size:12.5px; color:#fbbf24; font-weight:700; white-space:nowrap;">✏️ Gõ số Seal:</span>
+      <input type="text" id="lightboxSealInput" class="input-box" placeholder="Gõ số seal vào đây..." style="flex:1; height:38px; font-size:17px; font-weight:800; text-transform:uppercase; text-align:center; color:#fbbf24; background:#020617; border:2px solid #f59e0b; border-radius:8px;" autocomplete="off" autocapitalize="characters" />
+      <button type="button" class="btn btn-primary" id="btnConfirmLightboxSeal" style="height:38px; padding:0 14px; font-size:13px; font-weight:700; background:#16a34a; white-space:nowrap;">✅ Xác nhận</button>
+    </div>
+  </div>
+
+  <script src="app.js?v=29"></script>
+</body>
+</html>
