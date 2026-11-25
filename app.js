@@ -472,16 +472,12 @@ function initContConfirmModal() {
   if (btnRetakeCam) {
     btnRetakeCam.addEventListener('click', () => {
       closeContConfirmModal();
-      const inputCam = document.getElementById('inputCamCont');
-      if (inputCam) inputCam.click();
     });
   }
 
   if (btnRetakeGal) {
     btnRetakeGal.addEventListener('click', () => {
       closeContConfirmModal();
-      const inputGal = document.getElementById('inputGalCont');
-      if (inputGal) inputGal.click();
     });
   }
 
@@ -675,16 +671,12 @@ function initSealConfirmModal() {
   if (btnRetakeCam) {
     btnRetakeCam.addEventListener('click', () => {
       closeSealConfirmModal();
-      const inputCam = document.getElementById('inputCamSeal');
-      if (inputCam) inputCam.click();
     });
   }
 
   if (btnRetakeGal) {
     btnRetakeGal.addEventListener('click', () => {
       closeSealConfirmModal();
-      const inputGal = document.getElementById('inputGalSeal');
-      if (inputGal) inputGal.click();
     });
   }
 
@@ -866,8 +858,7 @@ function initImageInputs() {
   const inputGalCont = document.getElementById('inputGalCont');
   const clearContBtn = document.getElementById('clearContImgBtn');
 
-  btnCamCont.addEventListener('click', () => inputCamCont.click());
-  btnGalCont.addEventListener('click', () => inputGalCont.click());
+  // Native label clicks trigger the corresponding file input automatically
   inputCamCont.addEventListener('change', (e) => handleImageFile(e.target.files[0], 'cont'));
   inputGalCont.addEventListener('change', (e) => handleImageFile(e.target.files[0], 'cont'));
   clearContBtn.addEventListener('click', (e) => {
@@ -875,14 +866,10 @@ function initImageInputs() {
     clearSlotImage('cont');
   });
 
-  const btnCamSeal = document.getElementById('btnCamSeal');
-  const btnGalSeal = document.getElementById('btnGalSeal');
   const inputCamSeal = document.getElementById('inputCamSeal');
   const inputGalSeal = document.getElementById('inputGalSeal');
   const clearSealBtn = document.getElementById('clearSealImgBtn');
 
-  btnCamSeal.addEventListener('click', () => inputCamSeal.click());
-  btnGalSeal.addEventListener('click', () => inputGalSeal.click());
   inputCamSeal.addEventListener('change', (e) => handleImageFile(e.target.files[0], 'seal'));
   inputGalSeal.addEventListener('change', (e) => handleImageFile(e.target.files[0], 'seal'));
   clearSealBtn.addEventListener('click', (e) => {

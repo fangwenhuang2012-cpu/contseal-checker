@@ -11,7 +11,7 @@
   <meta http-equiv="Expires" content="0" />
   <title>ContSeal Checker - Kiểm tra Cont &amp; Seal</title>
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="styles.css?v=29" />
+  <link rel="stylesheet" href="styles.css?v=30" />
   <!-- SheetJS for Excel Read/Write -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- Tesseract.js for Free Local OCR -->
@@ -24,7 +24,7 @@
       <div class="brand">
         <div class="brand-icon">📦</div>
         <div>
-          <div class="brand-title">ContSeal Checker <span style="font-size:11px; color:#38bdf8; font-weight:600;">v29</span></div>
+          <div class="brand-title">ContSeal Checker <span style="font-size:11px; color:#38bdf8; font-weight:600;">v30</span></div>
           <div class="brand-sub">
             <span id="engineBadge" class="engine-badge">⚡ OCR Cửa Cont ISO + Seal Đa Góc</span>
           </div>
@@ -105,11 +105,11 @@
               <button class="clear-img-btn" id="clearContImgBtn" title="Xóa ảnh">✕</button>
             </div>
             <div class="slot-actions">
-              <button class="btn-mini camera" id="btnCamCont">📷 Chụp</button>
-              <button class="btn-mini" id="btnGalCont">🖼️ Thư viện</button>
+              <label for="inputCamCont" class="btn-mini camera" id="btnCamCont">📷 Chụp</label>
+              <label for="inputGalCont" class="btn-mini" id="btnGalCont">🖼️ Thư viện</label>
             </div>
-            <input type="file" id="inputCamCont" accept="image/*" capture="environment" hidden />
-            <input type="file" id="inputGalCont" accept="image/*" hidden />
+            <input type="file" id="inputCamCont" accept="image/*" capture="environment" class="visually-hidden-input" />
+            <input type="file" id="inputGalCont" accept="image/*" class="visually-hidden-input" />
           </div>
 
           <!-- Seal Photo Slot (Tự động đọc mọi góc xoay dọc/ngang/nghiêng) -->
@@ -125,11 +125,11 @@
               <button class="clear-img-btn" id="clearSealImgBtn" title="Xóa ảnh">✕</button>
             </div>
             <div class="slot-actions">
-              <button class="btn-mini camera" id="btnCamSeal">📷 Chụp</button>
-              <button class="btn-mini" id="btnGalSeal">🖼️ Thư viện</button>
+              <label for="inputCamSeal" class="btn-mini camera" id="btnCamSeal">📷 Chụp</label>
+              <label for="inputGalSeal" class="btn-mini" id="btnGalSeal">🖼️ Thư viện</label>
             </div>
-            <input type="file" id="inputCamSeal" accept="image/*" capture="environment" hidden />
-            <input type="file" id="inputGalSeal" accept="image/*" hidden />
+            <input type="file" id="inputCamSeal" accept="image/*" capture="environment" class="visually-hidden-input" />
+            <input type="file" id="inputGalSeal" accept="image/*" class="visually-hidden-input" />
           </div>
         </div>
 
@@ -398,12 +398,12 @@
             Tập trung hướng máy vào <strong>1/4 bên phải phía trên cửa</strong> (nơi in số Cont HACU 216056 9):
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-            <button type="button" class="btn btn-primary" id="btnRetakeContCam" style="background:#2563eb; font-weight:700; font-size:13px; height:38px;">
+            <label for="inputCamCont" class="btn btn-primary" id="btnRetakeContCam" style="background:#2563eb; font-weight:700; font-size:13px; height:38px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
               📷 Mở Camera chụp lại
-            </button>
-            <button type="button" class="btn btn-outline" id="btnRetakeContGal" style="font-size:13px; height:38px;">
+            </label>
+            <label for="inputGalCont" class="btn btn-outline" id="btnRetakeContGal" style="font-size:13px; height:38px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
               🖼️ Chọn từ thư viện
-            </button>
+            </label>
           </div>
         </div>
 
@@ -559,12 +559,12 @@
             <span>📸 Hoặc Chụp lại ảnh góc khác (nếu lóa sáng / quá mờ):</span>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-            <button type="button" class="btn btn-outline" id="btnRetakeSealCam" style="font-weight:700; font-size:12px; height:34px;">
+            <label for="inputCamSeal" class="btn btn-outline" id="btnRetakeSealCam" style="font-weight:700; font-size:12px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
               📷 Mở Camera
-            </button>
-            <button type="button" class="btn btn-outline" id="btnRetakeSealGal" style="font-size:12px; height:34px;">
+            </label>
+            <label for="inputGalSeal" class="btn btn-outline" id="btnRetakeSealGal" style="font-size:12px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
               🖼️ Thư viện ảnh
-            </button>
+            </label>
           </div>
         </div>
 
@@ -716,6 +716,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=29"></script>
+  <script src="app.js?v=30"></script>
 </body>
 </html>
